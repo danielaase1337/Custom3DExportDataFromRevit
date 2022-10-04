@@ -9,6 +9,8 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using System.IO;
 using System.Reflection;
+using CustomExporterAdnMeshJson.GML;
+using System.Linq;
 #endregion
 
 namespace CustomExporterAdnMeshJson
@@ -31,6 +33,8 @@ namespace CustomExporterAdnMeshJson
             Document doc = uidoc.Document;
 
             // This command requires an active document
+            var exportAsJson = false;
+
 
             if (null == uidoc)
             {
@@ -46,7 +50,37 @@ namespace CustomExporterAdnMeshJson
                 return Result.Failed;
             }
 
+
+            string storePath = String.Empty;
+            var saveDlg = new System.Windows.Forms.SaveFileDialog();
+            saveDlg.InitialDirectory = @"D:\tmp\Exportet3DJsonFiles";
+            saveDlg.RestoreDirectory = true;
+            saveDlg.Filter = "All files | *.*";
+            var res = saveDlg.ShowDialog();
+            if (res == System.Windows.Forms.DialogResult.OK)
+                storePath = saveDlg.FileName;
+
+            if (string.IsNullOrEmpty(storePath))
+            {
+                var executingPath = Assembly.GetExecutingAssembly().Location;
+                var pathAbove = Directory.GetParent(executingPath);
+                var outputDataFolder = Path.Combine(pathAbove.FullName, "OutputDir");
+                if (!Directory.Exists(outputDataFolder))
+                    Directory.CreateDirectory(outputDataFolder);
+
+                storePath = Path.Combine(outputDataFolder, "Exported3dTestData");
+            }
+
             // Instantiate our custom context
+            if (!exportAsJson)
+            {
+                var selectedElementIds = uiapp.ActiveUIDocument.Selection.GetElementIds();
+                var selectedElements = selectedElementIds.Select(f => doc.GetElement(f)).ToList();
+                IGMLExporter gmlExporter = new GMLExporter(selectedElements, doc, view, storePath);
+                if (gmlExporter.DoExport())
+                    return Result.Succeeded;
+                else return Result.Cancelled;
+            }
 
             ExportContextAdnMesh context
               = new ExportContextAdnMesh(doc);
@@ -80,44 +114,19 @@ namespace CustomExporterAdnMeshJson
             }
 
 
-            string storePath = String.Empty;
-            var saveDlg = new System.Windows.Forms.SaveFileDialog(); 
-            saveDlg.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            saveDlg.RestoreDirectory = true; 
-            var res = saveDlg.ShowDialog();
-            if (res == System.Windows.Forms.DialogResult.OK)
-                storePath = saveDlg.FileName;
-
-            if (string.IsNullOrEmpty(storePath))
-            {
-                var executingPath = Assembly.GetExecutingAssembly().Location;
-                var pathAbove = Directory.GetParent(executingPath);
-                var outputDataFolder = Path.Combine(pathAbove.FullName, "OutputDir");
-                if (!Directory.Exists(outputDataFolder))
-                    Directory.CreateDirectory(outputDataFolder);
-
-                storePath = Path.Combine(outputDataFolder, "Exported3dTestData.json");
-            }
+            
 
             
-                StreamWriter s = new StreamWriter(
-              storePath);
 
-            s.Write("[");
-
-            int i = 0;
-
-            foreach (AdnMeshData d in context.MeshData)
+            if (exportAsJson)
+                FileWriter.WriteFileAsJson(context.MeshData, storePath);
+            else
             {
-                if (0 < i) { s.Write(','); }
-
-                s.Write(d.ToJson());
-
-                ++i;
+                //var gmlExporter = new GMLExporter(context.MeshData);
+                //var stringresult = gmlExporter.CreateGMLFile();
+                //FileWriter.WriteFileAsGml(stringresult, storePath);
             }
-
-            s.Write("\n]\n");
-            s.Close();
+       
 
             return Result.Succeeded;
         }
