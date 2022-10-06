@@ -77,7 +77,7 @@ namespace CustomExporterAdnMeshJson
                 selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Floors, doc));
                 selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Roofs, doc));
                 selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Stairs, doc));
-                selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Site, doc));
+                //selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Site, doc));
             }
 
             var selectedElements = selectedElementIds.Select(f => doc.GetElement(f)).ToList();

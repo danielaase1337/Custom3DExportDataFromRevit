@@ -25,10 +25,15 @@ namespace CustomExporterAdnMeshJson
         public ExportHoster(string path)
         {
             InitializeComponent();
+            
             if (File.Exists(path))
             {
                 ConnectionView.SetGmlFile(path);
             }
+            path += ".gml";
+            if(File.Exists(path))
+                ConnectionView.SetGmlFile(path);
+
         }
     }
 }

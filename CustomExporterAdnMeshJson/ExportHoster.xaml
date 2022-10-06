@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:CustomExporterAdnMeshJson"
          xmlns:pg="clr-namespace:GmlToPostGISParser.User_Interface;assembly=GmlToPostGISParser"
-             mc:Ignorable="d" 
+             mc:Ignorable="d" Width="500" SizeToContent="WidthAndHeight" Topmost="True"
              >
     <Grid>
         <pg:PostGisConnectionView Height="Auto" Width="Auto" Name="ConnectionView"></pg:PostGisConnectionView>

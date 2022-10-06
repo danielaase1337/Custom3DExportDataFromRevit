@@ -250,3 +250,9 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
+/CustomExporterAdnMeshJson/Resources/Skoger-skole_tmp_backup
+/CustomExporterAdnMeshJson/Resources/Skoger-skole_backup
+/CustomExporterAdnMeshJson/Resources/Svelvikveien 268 - Drømmehuset.rvt
+/CustomExporterAdnMeshJson/Resources/Skoger-skole_tmp.rvt
+/CustomExporterAdnMeshJson/Resources/Skoger-skole.rvt
+/CustomExporterAdnMeshJson/Resources/Skoger-skole.0002.rvt
