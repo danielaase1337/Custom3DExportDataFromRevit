@@ -34,6 +34,8 @@ namespace CustomExporterAdnMeshJson.GML
         List<XElement> _createdFeatures = new List<XElement>();
         ProjectLocation _projectLocation;
 
+        public string PathToExportedFile { get; set; }
+
         internal GMLExporter(IEnumerable<Element> elementsToExport, Document doc, View3D active3dView, string outputpath)
         {
             this.elementsToExport = elementsToExport;
@@ -73,7 +75,8 @@ namespace CustomExporterAdnMeshJson.GML
         private XElement GetEnvelope()
         {
             var fec = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Site).ToElements().Where(f => f is FamilyInstance).ToList();
-
+            var sectionbox = active3DView.GetSectionBox(); 
+            
             var boundingelement = new XElement(gml + "boundedBy");
             var srsNameAttribute = new XAttribute("srsName", srsName.NamespaceName);
             var srsDimmensionAttribute = new XAttribute("srsDimension", "2");
@@ -81,43 +84,22 @@ namespace CustomExporterAdnMeshJson.GML
             boundingelement.Add(envelope);
 
 
-            var lower = GetBoundingCornerElement("lowerCorner", fec);
+            var lower = GetBoundingCornerElement("lowerCorner", sectionbox.Min);
             if (lower != null)
                 envelope.Add(lower);
-            var upper = GetBoundingCornerElement("upperCorner", fec);
+            var upper = GetBoundingCornerElement("upperCorner", sectionbox.Max);
             if (upper != null)
                 envelope.Add(upper);
             return boundingelement;
         }
-        private XElement GetBoundingCornerElement(string name, List<Element> potensialelements)
+        private XElement GetBoundingCornerElement(string name, XYZ point)
         {
-            Element cornerElement = null;
+           
             XElement xElementCorner = null;
-            foreach (var item in potensialelements)
+            if (point != null)
             {
-                var parameter = item.GetParameter(ParameterTypeId.AllModelInstanceComments);
-                if (parameter == null) continue;
-                var stringValue = parameter.AsString();
-                if (string.IsNullOrEmpty(stringValue))
-                    continue;
-
-                if (stringValue.Equals(name))
-                {
-                    cornerElement = item;
-                    break;
-                }
-
-            }
-            if (cornerElement != null)
-            {
-                if (cornerElement.Location.GetType() == typeof(LocationPoint))
-                {
-                    var upperlocation = ((LocationPoint)cornerElement.Location).Point;
-                    var pL = _projectLocation.GetProjectPosition(upperlocation);
-
+                    var pL = _projectLocation.GetProjectPosition(point);
                     xElementCorner = new XElement(gml + name) { Value = $"{Math.Floor(UnitUtils.ConvertFromInternalUnits(pL.EastWest, UnitTypeId.Meters))} {Math.Floor(UnitUtils.ConvertFromInternalUnits(pL.NorthSouth, UnitTypeId.Meters))}" };
-                }
-
             }
             return xElementCorner;
         }
@@ -146,26 +128,52 @@ namespace CustomExporterAdnMeshJson.GML
 
             }
             var restultingGml = CreateGMLFile();
+            PathToExportedFile = _outputpath;
             return FileWriter.WriteFileAsGml(restultingGml, _outputpath);
         }
 
         private List<XElement> HandleFeature(IGmlExportElement baseFeature)
         {
-            List<XElement> _features = new List<XElement>(); 
-            if(baseFeature is GmlHostingSurfaceElement)
+            List<XElement> _features = new List<XElement>();
+            if (baseFeature is GmlHostingSurfaceElement)
             {
-                var feature =  GetFeatureElement(baseFeature);
-                _features.Add(feature);
+                var feature = GetFeatureElement(baseFeature);
+
+                if (feature != null)
+                    _features.Add(feature);
+                if (baseFeature.ChildFeatures.Any())
+                {
+                    foreach (var c in baseFeature.ChildFeatures)
+                    {
+                        var cfeature = GetFeatureElement(c);
+                        if (cfeature != null)
+                            _features.Add(cfeature);
+                    }
+                }
             }
-            if(baseFeature is OpeningExportElement opening)
+            if (baseFeature is GmlOpeningExportElement opening)
             {
                 var mainFeature = GetFeatureElement(opening);
-                _features.Add(mainFeature);
+                if (mainFeature != null)
+                    _features.Add(mainFeature);
                 foreach (var child in opening.ChildFeatures)
                 {
                     var cFeature = GetFeatureElement(child);
-                    _features.Add(cFeature);
+                    if (cFeature != null)
+                        _features.Add(cFeature);
                 }
+            }
+            if(baseFeature is GmlStairExportElement stair)
+            {
+                var f = GetFeatureElement(stair);
+                if (f != null)
+                    _features.Add(f);
+            }
+            if(baseFeature is GmlSiteComponentExportElement site)
+            {
+                var f = GetFeatureElement(site);
+                if (f != null)
+                    _features.Add(f);
             }
             return _features;
         }
@@ -173,8 +181,10 @@ namespace CustomExporterAdnMeshJson.GML
 
         private XElement GetFeatureElement(IGmlExportElement el)
         {
+            if (el.MeshedFaces == null) return null;
+
             XElement feature = new XElement(gml + "featureMember");
-            
+
 
             XElement revitFeature = new XElement(rvt + el.FeatureName, new XAttribute(gml + "id", el.UniqId));
 
@@ -200,23 +210,22 @@ namespace CustomExporterAdnMeshJson.GML
 
             XElement patches = new XElement(gml + "patches");
             triangulatedSurface.Add(patches);
-
-                foreach (var item in el.MeshedFaces)
+            foreach (var item in el.MeshedFaces)
+            {
+                for (int i = 0; i < item.NumTriangles; i++)
                 {
-                    for (int i = 0; i < item.NumTriangles; i++)
-                    {
-                        var triangle = GetTriangleElement(item.get_Triangle(i));
-                        patches.Add(triangle);
-                    }
+                    var triangle = GetTriangleElement(item.get_Triangle(i));
+                    patches.Add(triangle);
                 }
-                feature.Add(revitFeature);
-            
-           
+            }
+            feature.Add(revitFeature);
+
+
 
             return feature;
 
         }
-        
+
         private XElement GetTriangleElement(MeshTriangle meshedTriangle)
         {
             XElement triangle1 = new XElement(gml + "Triangle");
@@ -234,6 +243,7 @@ namespace CustomExporterAdnMeshJson.GML
             for (int j = 0; j < 3; j++)
             {
                 var vert = meshedTriangle.get_Vertex(j);
+
                 var pl = _projectLocation.GetProjectPosition(vert);
                 var x = UnitUtils.ConvertFromInternalUnits(pl.EastWest, UnitTypeId.Meters);
                 var y = UnitUtils.ConvertFromInternalUnits(pl.NorthSouth, UnitTypeId.Meters);
@@ -268,18 +278,23 @@ namespace CustomExporterAdnMeshJson.GML
                 var catId = inst.Category.Id.IntegerValue;
                 if (catId == (int)BuiltInCategory.OST_Doors)
                 {
-                    exportDataElemet = new OpeningExportElement(FeatureType.Door, inst, active3DView);
+                    exportDataElemet = new GmlOpeningExportElement(FeatureType.Door, inst, active3DView);
                 }
                 else if (catId == (int)BuiltInCategory.OST_Windows)
                 {
-                    exportDataElemet = new OpeningExportElement(FeatureType.Window, inst, active3DView);
+                    exportDataElemet = new GmlOpeningExportElement(FeatureType.Window, inst, active3DView);
                 }
+                else if (catId == (int)BuiltInCategory.OST_Floors)
+                    exportDataElemet = new GmlHostingSurfaceElement(FeatureType.Floor, inst, active3DView);
+                else if(catId == (int)BuiltInCategory.OST_Site)
+                    exportDataElemet = new GmlSiteComponentExportElement(FeatureType.SiteComponent, inst, active3DView);
+
             }
-            //else if (el is Stairs stair)
-            //    exportDataElemet = new GmlHostingSurfaceElement(FeatureType.Stairs, stair,active3DView);
+            else if (el is Stairs stair)
+                exportDataElemet = new GmlStairExportElement(FeatureType.Stairs, stair,active3DView);
             
-            if (exportDataElemet == null) return null; 
-            
+            if (exportDataElemet == null) return null;
+
             exportDataElemet.HandleGeometry();
             exportDataElemet.PopulateElementPropertyData();
             return exportDataElemet;

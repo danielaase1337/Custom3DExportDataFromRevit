@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <RevitAddIns>
   <AddIn Type="Command">
-    <Text>Export 3D Mesh Data to JSON</Text>
-    <Description>Export 3D Mesh Data to JSON</Description>
-    <Assembly>CustomExporterAdnMeshJson.dll</Assembly>
+    <Text>Export 3D Data to GML</Text>
+    <Description>Export 3D Mesh Data to GML</Description>
+    <Assembly>D:\Focus\GIT\Export3DGeometryFromRevit\CustomExporterAdnMeshJson\bin\Debug\CustomExporterAdnMeshJson.dll</Assembly>
     <FullClassName>CustomExporterAdnMeshJson.Command</FullClassName>
     <ClientId>92037c5b-5799-4367-818c-bbc22ffb4097</ClientId>
 	  <VendorId>FOSW</VendorId>

@@ -1,0 +1,14 @@
+﻿<Window x:Class="CustomExporterAdnMeshJson.ExportHoster"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:CustomExporterAdnMeshJson"
+         xmlns:pg="clr-namespace:GmlToPostGISParser.User_Interface;assembly=GmlToPostGISParser"
+             mc:Ignorable="d" 
+             >
+    <Grid>
+        <pg:PostGisConnectionView Height="Auto" Width="Auto" Name="ConnectionView"></pg:PostGisConnectionView>
+
+    </Grid>
+</Window>

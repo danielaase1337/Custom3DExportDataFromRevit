@@ -33,9 +33,6 @@ namespace CustomExporterAdnMeshJson
             Document doc = uidoc.Document;
 
             // This command requires an active document
-            var exportAsJson = false;
-
-
             if (null == uidoc)
             {
                 message = "Please run this command in an active project document.";
@@ -43,13 +40,11 @@ namespace CustomExporterAdnMeshJson
             }
 
             View3D view = doc.ActiveView as View3D;
-
             if (null == view)
             {
                 message = "Please run this command in a 3D view.";
                 return Result.Failed;
             }
-
 
             string storePath = String.Empty;
             var saveDlg = new System.Windows.Forms.SaveFileDialog();
@@ -72,63 +67,37 @@ namespace CustomExporterAdnMeshJson
             }
 
             // Instantiate our custom context
-            if (!exportAsJson)
+            var selectedElementIds = uiapp.ActiveUIDocument.Selection.GetElementIds().ToList();
+            if (!selectedElementIds.Any())
             {
-                var selectedElementIds = uiapp.ActiveUIDocument.Selection.GetElementIds();
-                var selectedElements = selectedElementIds.Select(f => doc.GetElement(f)).ToList();
-                IGMLExporter gmlExporter = new GMLExporter(selectedElements, doc, view, storePath);
-                if (gmlExporter.DoExport())
-                    return Result.Succeeded;
-                else return Result.Cancelled;
+                selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Walls, doc));
+                //selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_CurtainGridsWall, doc));
+                selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Doors, doc));
+                selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Windows, doc));
+                selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Floors, doc));
+                selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Roofs, doc));
+                selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Stairs, doc));
+                selectedElementIds.AddRange(AddElementsFromFec(BuiltInCategory.OST_Site, doc));
             }
 
-            ExportContextAdnMesh context
-              = new ExportContextAdnMesh(doc);
-
-            // Instantiate a custom exporter with it
-
-            using (CustomExporter exporter = new CustomExporter(doc, context))
+            var selectedElements = selectedElementIds.Select(f => doc.GetElement(f)).ToList();
+            IGMLExporter gmlExporter = new GMLExporter(selectedElements, doc, view, storePath);
+            if (gmlExporter.DoExport())
             {
-                // Tell the exporter whether we need face info.
-                // If not, it is better to exclude them, since 
-                // processing faces takes significant time and 
-                // memory. In any case, tessellated polymeshes
-                // can be exported (and will be sent to the 
-                // context). Excluding faces just excludes the calls, 
-                // not the actual processing of face tessellation. 
-                // Meshes of the faces will still be received by 
-                // the context.
 
-                //exporter.IncludeFaces = false; // removed in Revit 2017
+                var dlg = new ExportHoster(gmlExporter.PathToExportedFile);
+                dlg.ShowDialog();
 
-                exporter.IncludeGeometricObjects = false; // Revit 2017
-               
-                try
-                {
-                    exporter.Export(view);
-                }
-                catch (Autodesk.Revit.Exceptions.ExternalApplicationException ex)
-                {
-                    Debug.Print("ExternalApplicationException " + ex.Message);
-                }
+                return Result.Succeeded;
             }
 
+            return Result.Cancelled;
 
-            
-
-            
-
-            if (exportAsJson)
-                FileWriter.WriteFileAsJson(context.MeshData, storePath);
-            else
-            {
-                //var gmlExporter = new GMLExporter(context.MeshData);
-                //var stringresult = gmlExporter.CreateGMLFile();
-                //FileWriter.WriteFileAsGml(stringresult, storePath);
-            }
-       
-
-            return Result.Succeeded;
+        }
+        private List<ElementId> AddElementsFromFec(BuiltInCategory cat, Document doc)
+        {
+            var fec = new FilteredElementCollector(doc).OfCategory(cat).WhereElementIsNotElementType();
+            return fec.ToElementIds().ToList();
         }
     }
 }

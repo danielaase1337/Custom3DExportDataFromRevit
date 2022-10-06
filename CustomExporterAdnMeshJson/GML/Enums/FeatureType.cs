@@ -11,7 +11,8 @@
         OpeningFrame,
         OpeningSurface, 
         Frame, 
-        GlassSurface
+        GlassSurface,
+        SiteComponent
     }
 
 }

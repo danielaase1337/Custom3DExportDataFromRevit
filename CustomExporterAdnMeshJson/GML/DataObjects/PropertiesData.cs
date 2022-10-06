@@ -95,8 +95,7 @@ namespace CustomExporterAdnMeshJson.GML
 
         public override string ToString()
         {
-            var jsondata = JsonConvert.SerializeObject(this);
-            return jsondata;
+            return Value; 
         }
     }
 
